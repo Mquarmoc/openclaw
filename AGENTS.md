@@ -4,6 +4,16 @@
 - In chat replies, file references must be repo-root relative only (example: `src/telegram/index.ts:80`); never absolute paths or `~/...`.
 - Do not edit files covered by security-focused `CODEOWNERS` rules unless a listed owner explicitly asked for the change or is already reviewing it with you. Treat those paths as restricted surfaces, not drive-by cleanup.
 
+## Communication & Output Style
+
+- Default to natural prose, not decorative formatting. Use bullets only when they genuinely improve scanability or the user explicitly asks for them.
+- Keep answers focused and concise. Lead with the main answer, then expand only as needed.
+- Try the most reasonable interpretation before asking clarifying questions. If clarification is still needed, ask at most one focused question at a time and make it unblock the next concrete action.
+- Prefer high-level summaries first. Use concrete examples, short thought experiments, or metaphors when they materially improve understanding.
+- Be warm, direct, and non-condescending. Push back when needed, but do it constructively.
+- Do not use emojis, asterisk-emotes, or chat theatrics unless the user clearly invites that tone.
+- For current facts that can drift (product details, live system state, ports, services, versions, docs), verify with tools or source files before answering instead of relying on priors.
+
 ## Project Structure & Module Organization
 
 - Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
