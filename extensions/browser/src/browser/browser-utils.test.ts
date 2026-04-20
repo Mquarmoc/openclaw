@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { createHmac } from "node:crypto";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   appendCdpPath,
   getHeadersWithAuth,
@@ -7,10 +10,18 @@ import {
 import { __test } from "./client-fetch.js";
 import { resolveBrowserConfig, resolveProfile } from "./config.js";
 import { shouldRejectBrowserMutation } from "./csrf.js";
+import {
+  ensureChromeExtensionRelayServer,
+  stopChromeExtensionRelayServer,
+} from "./extension-relay.js";
 import { toBoolean } from "./routes/utils.js";
 import type { BrowserServerState } from "./server-context.js";
 import { listKnownProfileNames } from "./server-context.js";
 import { resolveTargetIdFromTabs } from "./target-id.js";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("toBoolean", () => {
   it("parses yes/no and 1/0", () => {
@@ -193,6 +204,41 @@ describe("cdp.helpers", () => {
   it("does not add custom headers when none are required", () => {
     expect(getHeadersWithAuth("http://127.0.0.1:19444/json/version")).toEqual({});
   });
+
+  it("adds extension relay auth headers after registering an authenticated relay", async () => {
+    const gatewayToken = "test-gateway-token";
+    let seenRelayHeader: string | string[] | undefined;
+    vi.stubEnv("OPENCLAW_GATEWAY_TOKEN", gatewayToken);
+
+    const server = createServer((req, res) => {
+      if (req.url === "/json/version") {
+        seenRelayHeader = req.headers["x-openclaw-relay-token"];
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ Browser: "OpenClaw/extension-relay" }));
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const port = (server.address() as AddressInfo).port;
+    const cdpUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      await ensureChromeExtensionRelayServer({ cdpUrl });
+
+      const expected = createHmac("sha256", gatewayToken)
+        .update(`openclaw-extension-relay-v1:${port}`)
+        .digest("hex");
+      expect(seenRelayHeader).toBe(expected);
+      expect(getHeadersWithAuth(`${cdpUrl}/json/list`)).toEqual({
+        "x-openclaw-relay-token": expected,
+      });
+    } finally {
+      await stopChromeExtensionRelayServer({ cdpUrl }).catch(() => false);
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
 });
 
 describe("fetchBrowserJson loopback auth (bridge auth registry)", () => {
@@ -240,6 +286,11 @@ describe("browser server-context listKnownProfileNames", () => {
       ]),
     };
 
-    expect(listKnownProfileNames(state).toSorted()).toEqual(["openclaw", "stale-removed", "user"]);
+    expect(listKnownProfileNames(state).toSorted()).toEqual([
+      "chrome-relay",
+      "openclaw",
+      "stale-removed",
+      "user",
+    ]);
   });
 });

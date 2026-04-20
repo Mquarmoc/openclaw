@@ -6,7 +6,7 @@ import { loadConfig, writeConfigFile } from "../config/config.js";
 import { deriveDefaultBrowserCdpPortRange } from "../config/port-defaults.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { resolveUserPath } from "../utils.js";
-import { assertCdpEndpointAllowed } from "./cdp.helpers.js";
+import { assertCdpEndpointAllowed, isLoopbackHost } from "./cdp.helpers.js";
 import { resolveOpenClawUserDataDir } from "./chrome.js";
 import { parseHttpUrl, resolveProfile } from "./config.js";
 import {
@@ -31,7 +31,7 @@ export type CreateProfileParams = {
   color?: string;
   cdpUrl?: string;
   userDataDir?: string;
-  driver?: "openclaw" | "existing-session";
+  driver?: "openclaw" | "extension" | "existing-session";
 };
 
 export type CreateProfileResult = {
@@ -87,7 +87,12 @@ export function createBrowserProfilesService(ctx: BrowserRouteContext) {
     const rawCdpUrl = normalizeOptionalString(params.cdpUrl);
     const rawUserDataDir = normalizeOptionalString(params.userDataDir);
     const normalizedUserDataDir = rawUserDataDir ? resolveUserPath(rawUserDataDir) : undefined;
-    const driver = params.driver === "existing-session" ? "existing-session" : undefined;
+    const driver =
+      params.driver === "extension"
+        ? "extension"
+        : params.driver === "existing-session"
+          ? "existing-session"
+          : undefined;
 
     if (!isValidProfileName(name)) {
       throw new BrowserValidationError(
@@ -136,12 +141,30 @@ export function createBrowserProfilesService(ctx: BrowserRouteContext) {
       } catch (err) {
         throw new BrowserValidationError(formatErrorMessage(err));
       }
+      if (driver === "extension") {
+        if (!isLoopbackHost(parsed.parsed.hostname)) {
+          throw new BrowserValidationError(
+            `driver=extension requires a loopback cdpUrl host, got: ${parsed.parsed.hostname}`,
+          );
+        }
+        if (parsed.parsed.protocol !== "http:" && parsed.parsed.protocol !== "https:") {
+          throw new BrowserValidationError(
+            `driver=extension requires an http(s) cdpUrl, got: ${parsed.parsed.protocol.replace(
+              ":",
+              "",
+            )}`,
+          );
+        }
+      }
       profileConfig = {
         cdpUrl: parsed.normalized,
         ...(driver ? { driver } : {}),
         color: profileColor,
       };
     } else {
+      if (driver === "extension") {
+        throw new BrowserValidationError("driver=extension requires an explicit loopback cdpUrl");
+      }
       if (driver === "existing-session") {
         // existing-session uses Chrome MCP auto-connect; no CDP port needed
         profileConfig = {

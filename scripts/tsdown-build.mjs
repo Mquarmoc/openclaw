@@ -18,6 +18,10 @@ const UNRESOLVED_IMPORT_RE = /\[UNRESOLVED_IMPORT\]/;
 const ANSI_ESCAPE_RE = new RegExp(String.raw`\u001B\[[0-9;]*m`, "g");
 const HASHED_ROOT_JS_RE = /^(?<base>.+)-[A-Za-z0-9_-]+\.js$/u;
 
+export function shouldPruneStaleRootChunkFiles(args = extraArgs) {
+  return !args.includes("--no-clean");
+}
+
 function removeDistPluginNodeModulesSymlinks(rootDir) {
   const extensionsDir = path.join(rootDir, "extensions");
   if (!fs.existsSync(extensionsDir)) {
@@ -145,7 +149,9 @@ function isMainModule() {
 if (isMainModule()) {
   pruneSourceCheckoutBundledPluginNodeModules();
   pruneStaleRuntimeSymlinks();
-  pruneStaleRootChunkFiles();
+  if (shouldPruneStaleRootChunkFiles()) {
+    pruneStaleRootChunkFiles();
+  }
   const invocation = resolveTsdownBuildInvocation();
   const result = spawnSync(invocation.command, invocation.args, invocation.options);
 

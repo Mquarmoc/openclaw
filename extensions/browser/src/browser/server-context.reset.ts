@@ -36,6 +36,11 @@ export function createProfileResetOps({
 }: ResetDeps): ResetOps {
   const capabilities = getBrowserProfileCapabilities(profile);
   const resetProfile = async () => {
+    if (capabilities.requiresRelay) {
+      await stopRunningBrowser().catch(() => ({ stopped: false }));
+      return { moved: false, from: profile.cdpUrl };
+    }
+
     if (!capabilities.supportsReset) {
       throw new BrowserResetUnsupportedError(
         `reset-profile is only supported for local profiles (profile "${profile.name}" is remote).`,

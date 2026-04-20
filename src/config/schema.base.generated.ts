@@ -685,12 +685,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     },
                     {
                       type: "string",
+                      const: "extension",
+                    },
+                    {
+                      type: "string",
                       const: "existing-session",
                     },
                   ],
                   title: "Browser Profile Driver",
                   description:
-                    'Per-profile browser driver mode. Use "openclaw" (or legacy "clawd") for CDP-based profiles, or use "existing-session" for Chrome DevTools MCP attachment on the selected host or browser node.',
+                    'Per-profile browser driver mode. Use "openclaw" (or legacy "clawd") for managed CDP profiles, "extension" for the Browser Relay / attached-tab CDP relay, or "existing-session" for Chrome DevTools MCP attachment on the selected host or browser node.',
                 },
                 attachOnly: {
                   type: "boolean",
@@ -23588,7 +23592,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "browser.profiles.*.driver": {
       label: "Browser Profile Driver",
-      help: 'Per-profile browser driver mode. Use "openclaw" (or legacy "clawd") for CDP-based profiles, or use "existing-session" for Chrome DevTools MCP attachment on the selected host or browser node.',
+      help: 'Per-profile browser driver mode. Use "openclaw" (or legacy "clawd") for managed CDP profiles, "extension" for the Browser Relay / attached-tab CDP relay, or "existing-session" for Chrome DevTools MCP attachment on the selected host or browser node.',
       tags: ["storage"],
     },
     "browser.profiles.*.attachOnly": {

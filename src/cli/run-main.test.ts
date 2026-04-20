@@ -63,6 +63,7 @@ describe("rewriteUpdateFlagArgv", () => {
 describe("shouldEnsureCliPath", () => {
   it("skips path bootstrap for help/version invocations", () => {
     expect(shouldEnsureCliPath(["node", "openclaw", "--help"])).toBe(false);
+    expect(shouldEnsureCliPath(["node", "openclaw", "help"])).toBe(false);
     expect(shouldEnsureCliPath(["node", "openclaw", "-V"])).toBe(false);
     expect(shouldEnsureCliPath(["node", "openclaw", "-v"])).toBe(false);
   });
@@ -85,9 +86,11 @@ describe("shouldEnsureCliPath", () => {
 describe("shouldUseRootHelpFastPath", () => {
   it("uses the fast path for root help only", () => {
     expect(shouldUseRootHelpFastPath(["node", "openclaw", "--help"])).toBe(true);
+    expect(shouldUseRootHelpFastPath(["node", "openclaw", "help"])).toBe(true);
     expect(shouldUseRootHelpFastPath(["node", "openclaw", "--profile", "work", "-h"])).toBe(true);
     expect(shouldUseRootHelpFastPath(["node", "openclaw", "status", "--help"])).toBe(false);
     expect(shouldUseRootHelpFastPath(["node", "openclaw", "--help", "status"])).toBe(false);
+    expect(shouldUseRootHelpFastPath(["node", "openclaw", "help", "status"])).toBe(false);
   });
 });
 

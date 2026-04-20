@@ -54,8 +54,10 @@ describe("browser config", () => {
     expect(user?.cdpPort).toBe(0);
     expect(user?.cdpUrl).toBe("");
     expect(user?.userDataDir).toBeUndefined();
-    // chrome-relay is no longer auto-created
-    expect(resolveProfile(resolved, "chrome-relay")).toBe(null);
+    const chromeRelay = resolveProfile(resolved, "chrome-relay");
+    expect(chromeRelay?.driver).toBe("extension");
+    expect(chromeRelay?.cdpPort).toBe(18792);
+    expect(chromeRelay?.cdpUrl).toBe("http://127.0.0.1:18792");
     expect(resolved.remoteCdpTimeoutMs).toBe(1500);
     expect(resolved.remoteCdpHandshakeTimeoutMs).toBe(3000);
   });
@@ -64,7 +66,7 @@ describe("browser config", () => {
     withEnv({ OPENCLAW_GATEWAY_PORT: "19001" }, () => {
       const resolved = resolveBrowserConfig(undefined);
       expect(resolved.controlPort).toBe(19003);
-      expect(resolveProfile(resolved, "chrome-relay")).toBe(null);
+      expect(resolveProfile(resolved, "chrome-relay")?.cdpUrl).toBe("http://127.0.0.1:19004");
 
       const openclaw = resolveProfile(resolved, "openclaw");
       expect(openclaw?.cdpPort).toBe(19012);
@@ -76,7 +78,7 @@ describe("browser config", () => {
     withEnv({ OPENCLAW_GATEWAY_PORT: undefined }, () => {
       const resolved = resolveBrowserConfig(undefined, { gateway: { port: 19011 } });
       expect(resolved.controlPort).toBe(19013);
-      expect(resolveProfile(resolved, "chrome-relay")).toBe(null);
+      expect(resolveProfile(resolved, "chrome-relay")?.cdpUrl).toBe("http://127.0.0.1:19014");
 
       const openclaw = resolveProfile(resolved, "openclaw");
       expect(openclaw?.cdpPort).toBe(19022);
@@ -399,6 +401,11 @@ describe("browser config", () => {
     const resolved = resolveBrowserConfig({
       profiles: {
         "chrome-live": { driver: "existing-session", attachOnly: true, color: "#00AA00" },
+        "chrome-relay": {
+          driver: "extension",
+          cdpUrl: "http://127.0.0.1:18792",
+          color: "#00AA00",
+        },
         work: { cdpPort: 18801, color: "#0066CC" },
       },
     });
@@ -408,6 +415,16 @@ describe("browser config", () => {
 
     const managed = resolveProfile(resolved, "openclaw")!;
     expect(getBrowserProfileCapabilities(managed).usesChromeMcp).toBe(false);
+
+    const extension = resolveProfile(resolved, "chrome-relay")!;
+    expect(extension.driver).toBe("extension");
+    expect(extension.cdpUrl).toBe("http://127.0.0.1:18792");
+    expect(getBrowserProfileCapabilities(extension)).toMatchObject({
+      mode: "local-extension-relay",
+      usesChromeMcp: false,
+      requiresRelay: true,
+      requiresAttachedTab: true,
+    });
 
     const work = resolveProfile(resolved, "work")!;
     expect(getBrowserProfileCapabilities(work).usesChromeMcp).toBe(false);

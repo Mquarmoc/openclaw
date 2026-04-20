@@ -6,6 +6,7 @@ import {
   pruneSourceCheckoutBundledPluginNodeModules,
   pruneStaleRootChunkFiles,
   resolveTsdownBuildInvocation,
+  shouldPruneStaleRootChunkFiles,
 } from "../../scripts/tsdown-build.mjs";
 import { createScriptTestHarness } from "./test-helpers.js";
 
@@ -61,6 +62,12 @@ describe("resolveTsdownBuildInvocation", () => {
 
     warn.mockRestore();
     rmSync.mockRestore();
+  });
+
+  it("does not prune stale hashed root chunks when tsdown runs with --no-clean", () => {
+    expect(shouldPruneStaleRootChunkFiles(["--no-clean"])).toBe(false);
+    expect(shouldPruneStaleRootChunkFiles(["--logLevel", "warn", "--no-clean"])).toBe(false);
+    expect(shouldPruneStaleRootChunkFiles([])).toBe(true);
   });
 
   it("prunes stale hashed root chunk files but keeps stable aliases and nested assets", async () => {

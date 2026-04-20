@@ -26,6 +26,7 @@ import {
 } from "./constants.js";
 import { resolveBrowserControlAuth, type BrowserControlAuth } from "./control-auth.js";
 import { DEFAULT_UPLOAD_DIR } from "./paths.js";
+import { getUsedPorts } from "./profiles.js";
 
 export {
   DEFAULT_AI_SNAPSHOT_MAX_CHARS,
@@ -80,7 +81,7 @@ export type ResolvedBrowserProfile = {
   cdpIsLoopback: boolean;
   userDataDir?: string;
   color: string;
-  driver: "openclaw" | "existing-session";
+  driver: "openclaw" | "extension" | "existing-session";
   attachOnly: boolean;
 };
 
@@ -192,6 +193,31 @@ function ensureDefaultUserBrowserProfile(
   return result;
 }
 
+function ensureDefaultChromeRelayProfile(
+  profiles: Record<string, BrowserProfileConfig>,
+  controlPort: number,
+): Record<string, BrowserProfileConfig> {
+  const result = { ...profiles };
+  if (result["chrome-relay"]) {
+    return result;
+  }
+
+  const relayPort = controlPort + 1;
+  if (!Number.isFinite(relayPort) || relayPort <= 0 || relayPort > 65535) {
+    return result;
+  }
+  if (getUsedPorts(result).has(relayPort)) {
+    return result;
+  }
+
+  result["chrome-relay"] = {
+    driver: "extension",
+    cdpUrl: `http://127.0.0.1:${relayPort}`,
+    color: "#00AA00",
+  };
+  return result;
+}
+
 export function resolveBrowserConfig(
   cfg: BrowserConfig | undefined,
   rootConfig?: OpenClawConfig,
@@ -250,14 +276,17 @@ export function resolveBrowserConfig(
   const legacyCdpPort = rawCdpUrl ? cdpInfo.port : undefined;
   const isWsUrl = cdpInfo.parsed.protocol === "ws:" || cdpInfo.parsed.protocol === "wss:";
   const legacyCdpUrl = rawCdpUrl && isWsUrl ? cdpInfo.normalized : undefined;
-  const profiles = ensureDefaultUserBrowserProfile(
-    ensureDefaultProfile(
-      cfg?.profiles,
-      defaultColor,
-      legacyCdpPort,
-      cdpPortRangeStart,
-      legacyCdpUrl,
+  const profiles = ensureDefaultChromeRelayProfile(
+    ensureDefaultUserBrowserProfile(
+      ensureDefaultProfile(
+        cfg?.profiles,
+        defaultColor,
+        legacyCdpPort,
+        cdpPortRangeStart,
+        legacyCdpUrl,
+      ),
     ),
+    controlPort,
   );
   const cdpProtocol = cdpInfo.parsed.protocol === "https:" ? "https" : "http";
 
@@ -311,7 +340,12 @@ export function resolveProfile(
   let cdpHost = resolved.cdpHost;
   let cdpPort = profile.cdpPort ?? 0;
   let cdpUrl = "";
-  const driver = profile.driver === "existing-session" ? "existing-session" : "openclaw";
+  const driver =
+    profile.driver === "extension"
+      ? "extension"
+      : profile.driver === "existing-session"
+        ? "existing-session"
+        : "openclaw";
 
   if (driver === "existing-session") {
     return {

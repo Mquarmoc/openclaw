@@ -6,7 +6,7 @@ export type BrowserProfileConfig = {
   /** Explicit user data directory for existing-session Chrome MCP attachment. */
   userDataDir?: string;
   /** Profile driver (default: openclaw). */
-  driver?: "openclaw" | "clawd" | "existing-session";
+  driver?: "openclaw" | "clawd" | "extension" | "existing-session";
   /** If true, never launch a browser for this profile; only attach. Falls back to browser.attachOnly. */
   attachOnly?: boolean;
   /** Profile color (hex). Auto-assigned at creation. */

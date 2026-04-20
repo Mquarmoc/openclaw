@@ -8,7 +8,7 @@ const nodeBin = process.execPath;
 const WINDOWS_BUILD_MAX_OLD_SPACE_MB = 4096;
 export const BUILD_ALL_STEPS = [
   { label: "canvas:a2ui:bundle", kind: "pnpm", pnpmArgs: ["canvas:a2ui:bundle"] },
-  { label: "tsdown", kind: "node", args: ["scripts/tsdown-build.mjs"] },
+  { label: "tsdown", kind: "node", args: ["scripts/tsdown-build.mjs", "--no-clean"] },
   { label: "runtime-postbuild", kind: "node", args: ["scripts/runtime-postbuild.mjs"] },
   {
     label: "write-npm-update-compat-sidecars",

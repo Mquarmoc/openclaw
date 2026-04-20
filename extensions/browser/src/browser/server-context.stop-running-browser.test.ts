@@ -5,8 +5,16 @@ import { makeBrowserProfile, makeBrowserServerState } from "./server-context.tes
 const pwAiMocks = vi.hoisted(() => ({
   closePlaywrightBrowserConnection: vi.fn(async () => {}),
 }));
+const relayMocks = vi.hoisted(() => ({
+  ensureChromeExtensionRelayServer: vi.fn(async () => ({
+    stop: vi.fn(async () => {}),
+  })),
+  stopChromeExtensionRelayServer: vi.fn(async () => true),
+  getChromeExtensionRelayAuthHeaders: vi.fn(() => ({})),
+}));
 
 vi.mock("./pw-ai.js", () => pwAiMocks);
+vi.mock("./extension-relay.js", () => relayMocks);
 vi.mock("./chrome.js", () => ({
   isChromeCdpReady: vi.fn(async () => true),
   isChromeReachable: vi.fn(async () => true),
@@ -68,6 +76,22 @@ describe("createProfileAvailability.stopRunningBrowser", () => {
     const { profileCtx } = createStopHarness(profile);
 
     await expect(profileCtx.stopRunningBrowser()).resolves.toEqual({ stopped: false });
+    expect(pwAiMocks.closePlaywrightBrowserConnection).not.toHaveBeenCalled();
+  });
+
+  it("stops extension relay profiles without touching managed Chrome state", async () => {
+    const profile = makeBrowserProfile({
+      name: "chrome-relay",
+      cdpUrl: "http://127.0.0.1:18792",
+      cdpPort: 18792,
+      driver: "extension",
+    });
+    const { profileCtx } = createStopHarness(profile);
+
+    await expect(profileCtx.stopRunningBrowser()).resolves.toEqual({ stopped: true });
+    expect(relayMocks.stopChromeExtensionRelayServer).toHaveBeenCalledWith({
+      cdpUrl: "http://127.0.0.1:18792",
+    });
     expect(pwAiMocks.closePlaywrightBrowserConnection).not.toHaveBeenCalled();
   });
 });

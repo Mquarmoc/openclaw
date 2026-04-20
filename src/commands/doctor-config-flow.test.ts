@@ -1587,7 +1587,7 @@ describe("doctor config flow", () => {
     expect(browser.relayBindHost).toBeUndefined();
     expect(
       ((browser.profiles as Record<string, { driver?: string }>)?.chromeLive ?? {}).driver,
-    ).toBe("existing-session");
+    ).toBe("extension");
     expect(result.cfg.plugins?.allow).toEqual(["telegram", "browser"]);
     expect(result.cfg.plugins?.entries?.browser?.enabled).toBe(true);
   });

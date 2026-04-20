@@ -42,7 +42,7 @@ export type ResolvedBrowserProfile = {
   cdpIsLoopback: boolean;
   userDataDir?: string;
   color: string;
-  driver: "openclaw" | "existing-session";
+  driver: "openclaw" | "extension" | "existing-session";
   attachOnly: boolean;
 };
 

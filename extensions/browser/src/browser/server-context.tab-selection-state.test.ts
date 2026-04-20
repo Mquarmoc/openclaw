@@ -174,6 +174,38 @@ describe("browser server-context tab selection state", () => {
     });
   });
 
+  it("does not create a blank tab when an extension relay has no attached tabs", async () => {
+    const createTargetViaCdp = vi.spyOn(cdpModule, "createTargetViaCdp");
+    const fetchMock = vi.fn(async (url: unknown) => {
+      const u = String(url);
+      if (!u.includes("/json/list")) {
+        throw new Error(`unexpected fetch: ${u}`);
+      }
+      return {
+        ok: true,
+        json: async () => [],
+      } as unknown as Response;
+    });
+
+    global.fetch = withFetchPreconnect(fetchMock);
+    const state = makeState("openclaw");
+    state.resolved.defaultProfile = "chrome-relay";
+    state.resolved.profiles = {
+      "chrome-relay": {
+        driver: "extension",
+        cdpUrl: "http://127.0.0.1:18792",
+        color: "#00AA00",
+      },
+    };
+    const ctx = createBrowserRouteContext({ getState: () => state });
+    const chromeRelay = ctx.forProfile("chrome-relay");
+
+    await expect(chromeRelay.ensureTabAvailable()).rejects.toThrow(
+      'no attached Chrome tabs for profile "chrome-relay"',
+    );
+    expect(createTargetViaCdp).not.toHaveBeenCalled();
+  });
+
   it("closes excess managed tabs after opening a new tab", async () => {
     vi.spyOn(cdpModule, "createTargetViaCdp").mockResolvedValue({ targetId: "NEW" });
     const existingTabs = makeManagedTabsWithNew();

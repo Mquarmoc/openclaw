@@ -42,6 +42,11 @@ export function createProfileSelectionOps({
     const profileState = getProfileState();
     const tabs1 = await listTabs();
     if (tabs1.length === 0) {
+      if (capabilities.requiresAttachedTab) {
+        throw new BrowserTabNotFoundError(
+          `tab not found (no attached Chrome tabs for profile "${profile.name}"). Click the OpenClaw Browser Relay toolbar icon on the tab you want to control (badge ON).`,
+        );
+      }
       await openTab("about:blank");
     }
 

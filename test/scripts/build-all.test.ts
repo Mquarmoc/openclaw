@@ -30,6 +30,25 @@ describe("resolveBuildAllStep", () => {
     });
   });
 
+  it("keeps the tsdown step on a no-clean build to preserve lazy runtime chunks during rebuilds", () => {
+    const step = BUILD_ALL_STEPS.find((entry) => entry.label === "tsdown");
+    expect(step).toBeTruthy();
+
+    const result = resolveBuildAllStep(step, {
+      nodeExecPath: "/custom/node",
+      env: { FOO: "bar" },
+    });
+
+    expect(result).toEqual({
+      command: "/custom/node",
+      args: ["scripts/tsdown-build.mjs", "--no-clean"],
+      options: {
+        stdio: "inherit",
+        env: { FOO: "bar" },
+      },
+    });
+  });
+
   it("keeps node steps on the current node binary", () => {
     const step = BUILD_ALL_STEPS.find((entry) => entry.label === "runtime-postbuild");
     expect(step).toBeTruthy();

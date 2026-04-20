@@ -12,6 +12,7 @@ import { redactSensitiveText } from "../logging/redact.js";
 import { getDirectAgentForCdp, withNoProxyForCdpUrl } from "./cdp-proxy-bypass.js";
 import { CDP_HTTP_REQUEST_TIMEOUT_MS, CDP_WS_HANDSHAKE_TIMEOUT_MS } from "./cdp-timeouts.js";
 import { BrowserCdpEndpointBlockedError } from "./errors.js";
+import { getChromeExtensionRelayAuthHeaders } from "./extension-relay.js";
 import { resolveBrowserRateLimitMessage } from "./rate-limit-message.js";
 import { withAllowedHostname } from "./ssrf-policy-helpers.js";
 
@@ -153,7 +154,7 @@ export type CdpSendFn = (
 ) => Promise<unknown>;
 
 export function getHeadersWithAuth(url: string, headers: Record<string, string> = {}) {
-  const mergedHeaders = { ...headers };
+  const mergedHeaders = { ...getChromeExtensionRelayAuthHeaders(url), ...headers };
   try {
     const parsed = new URL(url);
     const hasAuthHeader = Object.keys(mergedHeaders).some(

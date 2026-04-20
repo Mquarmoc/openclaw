@@ -61,7 +61,7 @@ export function rewriteUpdateFlagArgv(argv: string[]): string[] {
 
 export function shouldEnsureCliPath(argv: string[]): boolean {
   const invocation = resolveCliArgvInvocation(argv);
-  if (invocation.hasHelpOrVersion) {
+  if (invocation.hasHelpOrVersion || invocation.isRootHelpInvocation) {
     return false;
   }
   return shouldEnsureCliPathForCommandPath(invocation.commandPath);

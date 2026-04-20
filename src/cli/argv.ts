@@ -102,7 +102,11 @@ function isRootInvocationForFlags(
 }
 
 export function isRootHelpInvocation(argv: string[]): boolean {
-  return isRootInvocationForFlags(argv, HELP_FLAGS);
+  if (isRootInvocationForFlags(argv, HELP_FLAGS)) {
+    return true;
+  }
+  const commandPath = getCommandPathWithRootOptions(argv, 2);
+  return commandPath.length === 1 && commandPath[0] === "help";
 }
 
 export function getFlagValue(argv: string[], name: string): string | null | undefined {

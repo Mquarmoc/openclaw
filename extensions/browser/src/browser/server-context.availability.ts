@@ -22,7 +22,11 @@ import {
   stopOpenClawChrome,
 } from "./chrome.js";
 import type { ResolvedBrowserProfile } from "./config.js";
-import { BrowserProfileUnavailableError } from "./errors.js";
+import { BrowserConfigurationError, BrowserProfileUnavailableError } from "./errors.js";
+import {
+  ensureChromeExtensionRelayServer,
+  stopChromeExtensionRelayServer,
+} from "./extension-relay.js";
 import { getBrowserProfileCapabilities } from "./profile-capabilities.js";
 import {
   CDP_READY_AFTER_LAUNCH_MAX_TIMEOUT_MS,
@@ -137,6 +141,9 @@ export function createProfileAvailability({
       await stopOpenClawChrome(profileState.running).catch(() => {});
       setProfileRunning(null);
     }
+    if (getBrowserProfileCapabilities(previousProfile).requiresRelay) {
+      await stopChromeExtensionRelayServer({ cdpUrl: previousProfile.cdpUrl }).catch(() => false);
+    }
     if (getBrowserProfileCapabilities(previousProfile).usesChromeMcp) {
       await closeChromeMcpSession(previousProfile.name).catch(() => false);
     }
@@ -203,8 +210,27 @@ export function createProfileAvailability({
     const current = state();
     const remoteCdp = capabilities.isRemote;
     const attachOnly = profile.attachOnly;
+    const requiresRelay = capabilities.requiresRelay;
     const profileState = getProfileState();
     const httpReachable = await isHttpReachable();
+
+    if (requiresRelay) {
+      if (remoteCdp) {
+        throw new BrowserConfigurationError(
+          `Profile "${profile.name}" uses driver=extension but cdpUrl is not loopback (${redactedProfileCdpUrl}).`,
+        );
+      }
+      if (!httpReachable) {
+        await ensureChromeExtensionRelayServer({ cdpUrl: profile.cdpUrl });
+        if (await isHttpReachable(PROFILE_ATTACH_RETRY_TIMEOUT_MS)) {
+          return;
+        }
+        throw new BrowserProfileUnavailableError(
+          `Chrome extension relay for profile "${profile.name}" is not reachable at ${redactedProfileCdpUrl}.`,
+        );
+      }
+      return;
+    }
 
     if (!httpReachable) {
       if ((attachOnly || remoteCdp) && opts.onEnsureAttachTarget) {
@@ -297,6 +323,9 @@ export function createProfileAvailability({
     if (capabilities.usesChromeMcp) {
       const stopped = await closeChromeMcpSession(profile.name);
       return { stopped };
+    }
+    if (capabilities.requiresRelay) {
+      return { stopped: await stopChromeExtensionRelayServer({ cdpUrl: profile.cdpUrl }) };
     }
     const profileState = getProfileState();
     if (!profileState.running) {

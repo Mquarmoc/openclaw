@@ -8,6 +8,12 @@ const { createBrowserRouteContextMock, listKnownProfileNamesMock } = vi.hoisted(
   createBrowserRouteContextMock: vi.fn(),
   listKnownProfileNamesMock: vi.fn(),
 }));
+const relayMocks = vi.hoisted(() => ({
+  ensureChromeExtensionRelayServer: vi.fn(async () => ({
+    stop: vi.fn(async () => {}),
+  })),
+  getChromeExtensionRelayAuthHeaders: vi.fn(() => ({})),
+}));
 
 vi.mock("./chrome.js", () => ({
   stopOpenClawChrome: stopOpenClawChromeMock,
@@ -17,6 +23,7 @@ vi.mock("./server-context.js", () => ({
   createBrowserRouteContext: createBrowserRouteContextMock,
   listKnownProfileNames: listKnownProfileNamesMock,
 }));
+vi.mock("./extension-relay.js", () => relayMocks);
 
 const { ensureExtensionRelayForProfiles, stopKnownBrowserProfiles } =
   await import("./server-lifecycle.js");
@@ -25,16 +32,48 @@ beforeEach(() => {
   createBrowserRouteContextMock.mockClear();
   listKnownProfileNamesMock.mockClear();
   stopOpenClawChromeMock.mockClear();
+  relayMocks.ensureChromeExtensionRelayServer.mockClear();
 });
 
 describe("ensureExtensionRelayForProfiles", () => {
-  it("is a no-op after removing the Chrome extension relay path", async () => {
+  it("does nothing when no extension profiles are configured", async () => {
     await expect(
       ensureExtensionRelayForProfiles({
         resolved: { profiles: {} } as never,
         onWarn: vi.fn(),
       }),
     ).resolves.toBeUndefined();
+    expect(relayMocks.ensureChromeExtensionRelayServer).not.toHaveBeenCalled();
+  });
+
+  it("registers extension relay profiles and warns without failing when unavailable", async () => {
+    relayMocks.ensureChromeExtensionRelayServer.mockRejectedValueOnce(new Error("offline"));
+    const onWarn = vi.fn();
+
+    await expect(
+      ensureExtensionRelayForProfiles({
+        resolved: {
+          cdpProtocol: "http",
+          cdpHost: "127.0.0.1",
+          cdpIsLoopback: true,
+          profiles: {
+            "chrome-relay": {
+              driver: "extension",
+              cdpUrl: "http://127.0.0.1:18792",
+              color: "#00AA00",
+            },
+          },
+        } as never,
+        onWarn,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(relayMocks.ensureChromeExtensionRelayServer).toHaveBeenCalledWith({
+      cdpUrl: "http://127.0.0.1:18792",
+    });
+    expect(onWarn).toHaveBeenCalledWith(
+      'Chrome extension relay unavailable for profile "chrome-relay": Error: offline',
+    );
   });
 });
 

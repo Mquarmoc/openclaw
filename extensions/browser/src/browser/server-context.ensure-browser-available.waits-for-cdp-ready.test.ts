@@ -7,7 +7,21 @@ import {
 import * as chromeModule from "./chrome.js";
 import { BrowserProfileUnavailableError } from "./errors.js";
 import { createBrowserRouteContext } from "./server-context.js";
-import { makeBrowserServerState, mockLaunchedChrome } from "./server-context.test-harness.js";
+import {
+  makeBrowserProfile,
+  makeBrowserServerState,
+  mockLaunchedChrome,
+} from "./server-context.test-harness.js";
+
+const relayMocks = vi.hoisted(() => ({
+  ensureChromeExtensionRelayServer: vi.fn(async () => ({
+    stop: vi.fn(async () => {}),
+  })),
+  stopChromeExtensionRelayServer: vi.fn(async () => false),
+  getChromeExtensionRelayAuthHeaders: vi.fn(() => ({})),
+}));
+
+vi.mock("./extension-relay.js", () => relayMocks);
 
 function setupEnsureBrowserAvailableHarness() {
   vi.useFakeTimers();
@@ -89,6 +103,33 @@ describe("browser server-context ensureBrowserAvailable", () => {
       PROFILE_ATTACH_RETRY_TIMEOUT_MS,
       undefined,
     );
+    expect(launchOpenClawChrome).not.toHaveBeenCalled();
+    expect(stopOpenClawChrome).not.toHaveBeenCalled();
+  });
+
+  it("reuses the extension relay instead of launching local Chrome for chrome-relay", async () => {
+    const { launchOpenClawChrome, stopOpenClawChrome } = setupEnsureBrowserAvailableHarness();
+    const isChromeReachable = vi.mocked(chromeModule.isChromeReachable);
+    const isChromeCdpReady = vi.mocked(chromeModule.isChromeCdpReady);
+
+    const relayProfile = makeBrowserProfile({
+      name: "chrome-relay",
+      cdpUrl: "http://127.0.0.1:18792",
+      cdpPort: 18792,
+      driver: "extension",
+    });
+    const state = makeBrowserServerState({ profile: relayProfile });
+    const ctx = createBrowserRouteContext({ getState: () => state });
+    const profile = ctx.forProfile("chrome-relay");
+
+    isChromeReachable.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    await expect(profile.ensureBrowserAvailable()).resolves.toBeUndefined();
+
+    expect(relayMocks.ensureChromeExtensionRelayServer).toHaveBeenCalledWith({
+      cdpUrl: "http://127.0.0.1:18792",
+    });
+    expect(isChromeCdpReady).not.toHaveBeenCalled();
     expect(launchOpenClawChrome).not.toHaveBeenCalled();
     expect(stopOpenClawChrome).not.toHaveBeenCalled();
   });

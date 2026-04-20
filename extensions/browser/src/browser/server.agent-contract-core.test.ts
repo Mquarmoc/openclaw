@@ -544,14 +544,37 @@ describe("profile CRUD endpoints", () => {
     };
     expect(createBadExistingSessionBody.error).toContain("driver=existing-session is required");
 
-    const createLegacyDriver = await realFetch(`${base}/profiles/create`, {
+    const createExtensionWithoutUrl = await realFetch(`${base}/profiles/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "legacy", driver: "extension" }),
     });
-    expect(createLegacyDriver.status).toBe(400);
-    const createLegacyDriverBody = (await createLegacyDriver.json()) as { error: string };
-    expect(createLegacyDriverBody.error).toContain('unsupported profile driver "extension"');
+    expect(createExtensionWithoutUrl.status).toBe(400);
+    const createExtensionWithoutUrlBody = (await createExtensionWithoutUrl.json()) as {
+      error: string;
+    };
+    expect(createExtensionWithoutUrlBody.error).toContain(
+      "driver=extension requires an explicit loopback cdpUrl",
+    );
+
+    const createExtension = await realFetch(`${base}/profiles/create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "relay",
+        driver: "extension",
+        cdpUrl: "http://127.0.0.1:18792",
+      }),
+    });
+    expect(createExtension.status).toBe(200);
+    const createExtensionBody = (await createExtension.json()) as {
+      profile?: string;
+      transport?: string;
+      cdpUrl?: string | null;
+    };
+    expect(createExtensionBody.profile).toBe("relay");
+    expect(createExtensionBody.transport).toBe("cdp");
+    expect(createExtensionBody.cdpUrl).toBe("http://127.0.0.1:18792");
 
     const deleteMissing = await realFetch(`${base}/profiles/nonexistent`, {
       method: "DELETE",

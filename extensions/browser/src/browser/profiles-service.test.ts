@@ -199,6 +199,43 @@ describe("BrowserProfilesService", () => {
     );
   });
 
+  it("creates extension relay profiles with explicit loopback CDP URLs", async () => {
+    const resolved = resolveBrowserConfig({
+      profiles: {},
+    });
+    const { ctx, state } = createCtx(resolved);
+    vi.mocked(loadConfig).mockReturnValue({ browser: { profiles: {} } });
+
+    const service = createBrowserProfilesService(ctx);
+    const result = await service.createProfile({
+      name: "relay",
+      driver: "extension",
+      cdpUrl: "http://127.0.0.1:18792",
+    });
+
+    expect(result.transport).toBe("cdp");
+    expect(result.cdpPort).toBe(18792);
+    expect(result.cdpUrl).toBe("http://127.0.0.1:18792");
+    expect(result.isRemote).toBe(false);
+    expect(state.resolved.profiles.relay).toEqual({
+      driver: "extension",
+      cdpUrl: "http://127.0.0.1:18792",
+      color: expect.any(String),
+    });
+    expect(writeConfigFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        browser: expect.objectContaining({
+          profiles: expect.objectContaining({
+            relay: expect.objectContaining({
+              driver: "extension",
+              cdpUrl: "http://127.0.0.1:18792",
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
   it("rejects driver=existing-session when cdpUrl is provided", async () => {
     const resolved = resolveBrowserConfig({});
     const { ctx } = createCtx(resolved);

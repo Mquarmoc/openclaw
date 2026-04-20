@@ -136,6 +136,23 @@ describe("runCli exit behavior", () => {
     exitSpy.mockRestore();
   });
 
+  it("renders root help for the positional help command without building the full program", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`unexpected process.exit(${String(code)})`);
+    }) as typeof process.exit);
+
+    await runCli(["node", "openclaw", "help"]);
+
+    expect(maybeRunCliInContainerMock).toHaveBeenCalledWith(["node", "openclaw", "help"]);
+    expect(tryRouteCliMock).not.toHaveBeenCalled();
+    expect(outputPrecomputedRootHelpTextMock).toHaveBeenCalledTimes(1);
+    expect(outputRootHelpMock).toHaveBeenCalledTimes(1);
+    expect(buildProgramMock).not.toHaveBeenCalled();
+    expect(closeActiveMemorySearchManagersMock).not.toHaveBeenCalled();
+    expect(exitSpy).not.toHaveBeenCalled();
+    exitSpy.mockRestore();
+  });
+
   it("closes memory managers when a runtime was registered", async () => {
     tryRouteCliMock.mockResolvedValueOnce(true);
     hasMemoryRuntimeMock.mockReturnValue(true);

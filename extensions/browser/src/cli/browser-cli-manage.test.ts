@@ -114,6 +114,38 @@ describe("browser manage output", () => {
     expect(output).not.toContain("port: 0");
   });
 
+  it("keeps extension relay profiles on CDP transport in browser profiles output", async () => {
+    getBrowserManageCallBrowserRequestMock().mockImplementation(async (_opts: unknown, req) =>
+      req.path === "/profiles"
+        ? {
+            profiles: [
+              {
+                name: "chrome-relay",
+                driver: "extension",
+                transport: "cdp",
+                running: true,
+                tabCount: 1,
+                isDefault: false,
+                isRemote: false,
+                cdpPort: 18792,
+                cdpUrl: "http://127.0.0.1:18792",
+                color: "#00AA00",
+              },
+            ],
+          }
+        : {},
+    );
+
+    const program = createBrowserManageProgram();
+    await program.parseAsync(["browser", "profiles"], { from: "user" });
+
+    const output = getBrowserCliRuntime().log.mock.calls.at(-1)?.[0] as string;
+    expect(output).toContain("chrome-relay: running (1 tabs) [extension]");
+    expect(output).toContain("port: 18792");
+    expect(output).not.toContain("transport: chrome-mcp");
+    expect(output).not.toContain("[existing-session]");
+  });
+
   it("shows chrome-mcp transport after creating an existing-session profile", async () => {
     getBrowserManageCallBrowserRequestMock().mockImplementation(async (_opts: unknown, req) =>
       req.path === "/profiles/create"
