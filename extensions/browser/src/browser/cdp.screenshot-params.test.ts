@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { captureScreenshot } from "./cdp.js";
 import type { ResolvedBrowserProfile } from "./config.js";
-import { shouldUsePlaywrightForScreenshot } from "./profile-capabilities.js";
+import {
+  shouldUsePlaywrightForAriaSnapshot,
+  shouldUsePlaywrightForScreenshot,
+} from "./profile-capabilities.js";
 
 const sentMessages = vi.hoisted(() => {
   const msgs: Array<{ method: string; params?: Record<string, unknown> }> = [];
@@ -76,6 +79,14 @@ const localProfile: ResolvedBrowserProfile = {
   color: "#FF4500",
   driver: "openclaw",
   attachOnly: false,
+};
+
+const extensionProfile: ResolvedBrowserProfile = {
+  ...localProfile,
+  name: "chrome-relay",
+  cdpUrl: "http://127.0.0.1:18792",
+  cdpPort: 18792,
+  driver: "extension",
 };
 
 beforeEach(() => {
@@ -198,5 +209,17 @@ describe("shouldUsePlaywrightForScreenshot routing", () => {
         element: "#submit",
       }),
     ).toBe(true);
+  });
+});
+
+describe("shouldUsePlaywrightForAriaSnapshot routing", () => {
+  it("returns false for extension relay profiles when the relay exposes a tab wsUrl", () => {
+    expect(
+      shouldUsePlaywrightForAriaSnapshot({ profile: extensionProfile, wsUrl: "ws://x/cdp" }),
+    ).toBe(false);
+  });
+
+  it("returns true when wsUrl is missing", () => {
+    expect(shouldUsePlaywrightForAriaSnapshot({ profile: extensionProfile })).toBe(true);
   });
 });

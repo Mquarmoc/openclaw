@@ -544,8 +544,7 @@ export function registerBrowserAgentSnapshotRoutes(
           wsUrl: tab.wsUrl,
         })
           ? (() => {
-              // Extension relay doesn't expose per-page WS URLs; run AX snapshot via Playwright CDP session.
-              // Also covers cases where wsUrl is missing/unusable.
+              // Fall back to Playwright only when the target lacks a usable tab-level WebSocket.
               return requirePwAi(res, "aria snapshot").then(async (pw) => {
                 if (!pw) {
                   return null;

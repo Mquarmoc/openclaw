@@ -124,5 +124,5 @@ export function shouldUsePlaywrightForAriaSnapshot(params: {
   profile: ResolvedBrowserProfile;
   wsUrl?: string;
 }): boolean {
-  return getBrowserProfileCapabilities(params.profile).requiresRelay || !params.wsUrl;
+  return !params.wsUrl;
 }
